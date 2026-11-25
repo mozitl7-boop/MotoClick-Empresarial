@@ -147,3 +147,21 @@ h1,h2,h3,h4,p{margin-top:0}
 
 .ops-photo-check{display:flex;align-items:center;gap:12px;grid-column:1/-1;font-size:11px;font-weight:700;color:#514d47}.ops-photo-check input{accent-color:var(--orange);width:17px;height:17px}
 
+@media (max-width:800px){
+  .story-split{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .story-copy{min-width:0}
+  .story-copy h2{font-size:clamp(40px,7vw,52px)}
+  .mobile-panel{position:fixed;top:95px;right:0;bottom:auto;left:0;height:calc(100dvh - 95px);overflow-y:auto;overscroll-behavior:contain}
+}
+@media (max-width:540px){
+  .story-split{grid-template-columns:minmax(0,1fr)}
+  .story-copy h2{font-size:clamp(42px,14vw,62px)}
+  .big-cta>a{font-size:clamp(48px,16vw,86px);gap:10px}
+  .big-cta>a svg{flex:0 0 42px}
+  .catalog-hero h1{font-size:clamp(54px,15vw,86px)}
+  .info-hero h1{font-size:clamp(60px,16vw,96px)}
+  .admin-page-title{font-size:clamp(46px,15vw,61px)}
+  .footer-head{flex-wrap:wrap;gap:15px}
+  .footer-wordmark{font-size:clamp(70px,21.5vw,116px)}
+}
+
