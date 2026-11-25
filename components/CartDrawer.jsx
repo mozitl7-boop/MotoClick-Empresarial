@@ -1,0 +1,17 @@
+'use client';
+import Link from 'next/link';
+import {useEffect} from 'react';
+import {X,Minus,Plus,ArrowRight,ShoppingBag} from 'lucide-react';
+import {useCart} from '@/components/CartContext';
+import {breakdown,formatMoney} from '@/lib/products';
+import Photo from '@/components/Photo';
+export default function CartDrawer(){
+ const {isOpen,setOpen,lines,count,total,update,remove,error,stock}=useCart();
+ useEffect(()=>{if(!isOpen)return;const onKey=e=>{if(e.key==='Escape')setOpen(false)};window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey)},[isOpen,setOpen]);
+ if(!isOpen)return null;
+ const {subtotal,iva}=breakdown(total);const valid=lines.length>0&&lines.every(x=>x.product.active&&x.quantity<=stock(x.id).available);
+ return <div className="cart-shade" onMouseDown={e=>{if(e.target===e.currentTarget)setOpen(false)}}><aside className="cart-drawer" role="dialog" aria-modal="true" aria-label="Carrito de compras"><div className="drawer-header"><div><span className="eyebrow">TU SELECCIÓN</span><h2>CARRITO <span className="count-pill">{count}</span></h2></div><button className="icon-button" onClick={()=>setOpen(false)} aria-label="Cerrar carrito"><X size={24}/></button></div>
+ <div className="drawer-content">{!lines.length?<div className="drawer-empty"><ShoppingBag size={36}/><p>EL CARRITO ESTÁ VACÍO.</p><Link href="/catalogo" className="button button-dark" onClick={()=>setOpen(false)}>VER CATÁLOGO <ArrowRight size={18}/></Link></div>:lines.map(({id,quantity,product})=><article className="cart-line" key={id}><Link className="cart-line-img" href={`/producto?sku=${encodeURIComponent(product.sku)}`} onClick={()=>setOpen(false)}><Photo src={product.image} fallback={product.fallback||'/images/accessory.svg'} alt={product.name}/></Link><div className="cart-line-details"><span className="micro muted">{product.sku} · {product.category.toUpperCase()}</span><Link href={`/producto?sku=${encodeURIComponent(product.sku)}`} onClick={()=>setOpen(false)} className="cart-line-name">{product.name}</Link><strong>{formatMoney(product.price)}</strong><div className="line-controls"><div className="line-qty"><button aria-label="Restar" onClick={()=>update(id,quantity-1)}><Minus size={14}/></button><span>{quantity}</span><button aria-label="Sumar" disabled={quantity>=stock(id).available} onClick={()=>update(id,quantity+1)}><Plus size={14}/></button></div><button className="line-remove" onClick={()=>remove(id)}>ELIMINAR</button></div>{quantity>stock(id).available&&<small role="alert">Sólo {stock(id).available} disponibles; ajusta la cantidad.</small>}</div></article>)}
+ {error&&<p className="form-error" role="alert">{error}</p>}</div>
+ {lines.length>0&&<div className="drawer-footer"><div className="drawer-price-row"><span>SUBTOTAL SIN IVA</span><strong>{formatMoney(subtotal)}</strong></div><div className="drawer-price-row"><span>IVA INCLUIDO (16%)</span><strong>{formatMoney(iva)}</strong></div><div className="drawer-price-row total"><span>PRODUCTOS</span><strong>{formatMoney(total)}</strong></div><p className="drawer-note">El envío se calcula al elegir el destino. No se cobra dos veces el IVA.</p>{valid?<Link className="button button-dark full" href="/checkout" onClick={()=>setOpen(false)}>CONTINUAR AL PAGO <ArrowRight size={18}/></Link>:<button className="button button-dark full" disabled>AJUSTA EXISTENCIAS</button>}</div>}</aside></div>;
+}

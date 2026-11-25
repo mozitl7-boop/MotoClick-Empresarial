@@ -1,0 +1,20 @@
+{
+  "name": "motoclick-store",
+  "version": "3.0.0",
+  "private": true,
+  "description": "MotoClick — tienda y simulador de operaciones empresariales integradas. Proyecto académico Next.js.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "test": "node --experimental-default-type=module tests/commerce.mjs"
+  },
+  "dependencies": {
+    "next": "16.4.6",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "lucide-react": "^0.468.0"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  }
+}

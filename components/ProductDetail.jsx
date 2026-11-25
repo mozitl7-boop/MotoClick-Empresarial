@@ -1,0 +1,17 @@
+'use client';
+import Link from 'next/link';
+import {ArrowLeft,ArrowRight,Check,Plus,Minus,Truck,ShieldCheck} from 'lucide-react';
+import {useEffect,useState} from 'react';
+import Photo from '@/components/Photo';
+import ProductCard from '@/components/ProductCard';
+import {formatMoney} from '@/lib/products';
+import {useCommerce} from '@/components/CommerceContext';
+import {useCart} from '@/components/CartContext';
+export default function ProductDetail({product}){
+ const {db,stock}=useCommerce();const p=db?.products.find(x=>x.id===product.id)||product;const left=stock(p.id).available;
+ const [qty,setQty]=useState(1);const {add}=useCart();useEffect(()=>{setQty(q=>Math.max(1,Math.min(q,left||1)))},[left]);
+ const related=(db?.products||[]).filter(x=>x.active&&x.category===p.category&&x.id!==p.id).slice(0,3);
+ return <><div className="breadcrumbs"><Link href="/catalogo"><ArrowLeft size={16}/> CATÁLOGO</Link><span>/</span><span>{p.category.toUpperCase()}</span><span>/</span><strong>{p.name.toUpperCase()}</strong></div>
+  <section className="detail-layout"><div className="detail-media"><Photo src={p.imageDetail||p.image} fallback={p.fallback||'/images/accessory.svg'} alt={`Fotografía de catálogo de ${p.name}`} priority className="detail-primary-img"/><span>{p.imageVerified?'FOTOGRAFÍA VERIFICADA':'FOTOGRAFÍA DE CATÁLOGO'}</span></div><div className="detail-description"><div className="sticky-detail"><span className="eyebrow">{p.category.toUpperCase()} / {p.sku}</span><h1>{p.name.toUpperCase()}</h1><div className="detail-price">{formatMoney(p.price)} <span>MXN · IVA INCLUIDO</span></div><p className="detail-lead">{p.description}</p><div className="detail-specs">{Object.entries(p.specs||{}).map(([key,val])=><div key={key}><span>{key.toUpperCase()}</span><strong>{val}</strong></div>)}<div><span>EXISTENCIAS DISPONIBLES</span><strong>{left} UNIDADES</strong></div><div><span>GARANTÍA</span><strong>{p.warranty}</strong></div><div><span>ENTREGA ESTIMADA</span><strong>{p.deliveryDays} DÍAS (REFERENCIAL)</strong></div></div><div className="buy-box"><div className="qty-picker"><button disabled={qty<=1} onClick={()=>setQty(x=>Math.max(1,x-1))} aria-label="Reducir"><Minus size={17}/></button><span>{qty}</span><button disabled={qty>=left} onClick={()=>setQty(x=>Math.min(left,x+1))} aria-label="Aumentar"><Plus size={17}/></button></div><button disabled={!left||!p.active} className="button button-dark buy-button" onClick={()=>add(p.id,qty)}>{left?'AGREGAR AL CARRITO':'SIN EXISTENCIAS'} <ArrowRight size={19}/></button></div><div className="detail-notes"><div><Check size={16}/> Existencias vinculadas al inventario administrativo</div><div><Truck size={16}/> Opciones de envío según producto y destino</div><div><ShieldCheck size={16}/> Pago académico sin cargos reales</div></div><p className="detail-fineprint">Los precios y características se utilizan para una simulación académica. Consulta el fabricante para información técnica definitiva.</p></div></div></section>
+  {related.length>0&&<section className="section-space related-section"><div className="section-heading section-heading-tight"><div><span className="eyebrow">OTRAS REFERENCIAS</span><h2 className="section-title">MÁS OPCIONES.</h2></div><Link href="/catalogo" className="text-link">VER CATÁLOGO <ArrowRight size={17}/></Link></div><div className="related-grid">{related.map((x,i)=><ProductCard key={x.id} product={x} index={i}/>)}</div></section>}</>;
+}
