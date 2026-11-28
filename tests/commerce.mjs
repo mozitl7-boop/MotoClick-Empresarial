@@ -10,7 +10,8 @@ assert.equal(db.products[19].image,'/images/susuki%20burgman.JPG');
 assert.equal(db.products[20].image,'/images/casco%20integral.JPG');
 assert.equal(new Set(db.units.map(x=>x.vin)).size,db.units.length);
 assert.equal(stock(db,1).available,5); // ID 1 => 4 + 1
-assert.equal(stock(db,101).available,12);
+assert.equal(stock(db,101).available,16);
+for(const id of [101,102,103])for(const size of ['S','M','L','XL'])assert.equal(stock(db,id,size).available,4,`${id} talla ${size} inicia con cuatro unidades`);
 const before=stock(db,1);
 db=run(db,{type:'purchase/create',supplierId:'PRV-YAMAHA',lines:[{productId:1,quantity:5,unitCost:30000}]});
 const po=db.purchaseOrders[0];assert.equal(po.total,150000);
@@ -70,14 +71,14 @@ const cancel=db.returns[0];db=run(db,{type:'return/review',id:cancel.id,status:'
 assert.equal(db.orders[0].status,'cancelado');assert.equal(stock(db,2).reserved,0);assert.equal(stock(db,2).physical,physical2);
 db=run(db,{type:'return/refund',id:cancel.id});fail(()=>run(db,{type:'return/refund',id:cancel.id}));
 // Mixto motocicleta + accesorio: separa envíos y gestiona salidas sin descuentos dobles.
-db=run(db,{type:'cart/add',productId:3,quantity:1});db=run(db,{type:'cart/add',productId:101,quantity:2});
+db=run(db,{type:'cart/add',productId:3,quantity:1});db=run(db,{type:'cart/add',productId:101,quantity:2,size:'M'});
 assert.equal(shippingOptions(db,db.cart,'Puebla').find(x=>x.code==='especializado').cost,2130);
 db=run(db,{type:'checkout/confirm',requestId:'REQ-MIX',customer:{name:'Cliente Tres',email:'tres@example.test',phone:'2221234567'},address:{street:'Calle',colony:'Centro',city:'Puebla',state:'Puebla',zip:'72000'},shippingCode:'especializado'});
 const mixed=db.orders[0],mixShips=db.shipments.filter(s=>s.orderId===mixed.id);assert.equal(mixShips.length,2);
 assert.equal(stock(db,101).reserved,2);
 db=run(db,{type:'order/prepare',id:mixed.id});db=run(db,{type:'order/ready',id:mixed.id});
 for(const s of mixShips){db=run(db,{type:'shipment/assign',id:s.id,carrier:'Transporte Simulado'});db=run(db,{type:'shipment/transition',id:s.id,status:'despachado'});}
-assert.equal(stock(db,101).physical,10);assert.equal(stock(db,101).reserved,0);
+assert.equal(stock(db,101).physical,14);assert.equal(stock(db,101).reserved,0);
 assert.equal(db.orders[0].status,'enviado');
 for(const s of mixShips){db=run(db,{type:'shipment/transition',id:s.id,status:'en_reparto'});db=run(db,{type:'shipment/transition',id:s.id,status:'entregado'});}
 assert.equal(db.orders[0].status,'entregado');
@@ -122,3 +123,29 @@ extra=run(extra,{type:'purchase/status',id:newid,status:'confirmada'});
 extra=run(extra,{type:'purchase/receive',id:newid,receipts:[{productId:prod.id,quantity:2}]});
 assert.equal(stock(extra,prod.id).available,2);
 console.log('OK: alta de producto nuevo, asociación a proveedor, rechazo de líneas duplicadas y disponibilidad tras recepción.');
+let sizes=seedDB();
+fail(()=>run(sizes,{type:'cart/add',productId:101,quantity:1}));
+sizes=run(sizes,{type:'cart/add',productId:101,quantity:2,size:'M'});
+sizes=run(sizes,{type:'cart/add',productId:101,quantity:1,size:'M'});
+sizes=run(sizes,{type:'cart/add',productId:101,quantity:2,size:'L'});
+assert.deepEqual(sizes.cart.map(x=>({size:x.size,quantity:x.quantity})),[{size:'M',quantity:3},{size:'L',quantity:2}]);
+fail(()=>run(sizes,{type:'cart/add',productId:101,quantity:8,size:'XL'}));
+fail(()=>run(sizes,{type:'cart/set',productId:101,quantity:11,size:'M'}));
+fail(()=>run(sizes,{type:'cart/add',productId:101,quantity:1,size:'XXL'}));
+sizes=run(sizes,{type:'checkout/confirm',requestId:'REQ-SIZE',customer:{name:'Cliente Tallas',email:'tallas@example.test',phone:'2221234567'},address:{state:'Puebla'},shippingCode:'pickup'});
+assert.deepEqual(sizes.orders[0].items.map(x=>({size:x.size,quantity:x.quantity})),[{size:'M',quantity:3},{size:'L',quantity:2}]);
+assert.equal(stock(sizes,101,'M').reserved,3);
+assert.equal(stock(sizes,101,'M').available,1);
+assert.equal(stock(sizes,101,'L').reserved,2);
+assert.deepEqual(sizes.shipments[0].items.map(x=>x.size),['M','L']);
+sizes=run(sizes,{type:'return/request',orderId:sizes.orders[0].id,kind:'cancelacion',reason:'Cancelar prueba de tallas'});
+sizes=run(sizes,{type:'return/review',id:sizes.returns[0].id,status:'aprobada'});
+assert.equal(stock(sizes,101,'M').reserved,0);
+assert.equal(stock(sizes,101,'L').reserved,0);
+const oldDb=seedDB();oldDb.version=3;oldDb.products=oldDb.products.map(p=>{const copy={...p};delete copy.sizes;return copy;});
+for(const id of [101,102,103])oldDb.accessories[id]={physical:id===103?8:12,reserved:0};
+const upgraded=migrateDB(oldDb);
+assert.deepEqual(upgraded.products.find(p=>p.id===101).sizes,['S','M','L','XL']);
+assert.equal(upgraded.version,4);
+for(const id of [101,102,103])for(const size of ['S','M','L','XL'])assert(stock(upgraded,id,size).available>=4);
+console.log('OK: selección de talla requerida, variantes separadas, stock agregado y talla conservada en el pedido.');
